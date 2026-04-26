@@ -1,0 +1,1162 @@
+================================================================================
+FILE: pubspec.yaml
+================================================================================
+name: safenest_app
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  firebase_core: ^4.7.0
+  firebase_auth: ^6.4.0
+  firebase_database: ^12.3.0
+  fl_chart: ^1.2.0
+  google_fonts: ^8.0.2
+  provider: ^6.1.5+1
+  intl: ^0.20.2
+  flutter_local_notifications: ^21.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+================================================================================
+FILE: lib/main.dart
+================================================================================
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
+import 'services/firebase_service.dart';
+import 'theme.dart';
+import 'screens/home_screen.dart';
+import 'screens/controls_screen.dart';
+import 'screens/log_screen.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  try {
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: "AIzaSyDQmyJHTeWHtorit6UJ1tT_EL1tqUtpyLk",
+        appId: "1:245100657388:android:5591c28c89423984",
+        messagingSenderId: "245100657388",
+        projectId: "safenest-6ae41",
+        databaseURL: "https://safenest-6ae41-default-rtdb.asia-southeast1.firebasedatabase.app/",
+      ),
+    );
+  } catch (e) {
+    debugPrint("Firebase Initialization Error: $e");
+  }
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => FirebaseService()),
+      ],
+      child: const SafeNestApp(),
+    ),
+  );
+}
+
+class SafeNestApp extends StatelessWidget {
+  const SafeNestApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'SafeNest',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.theme,
+      home: const MainNavigation(),
+    );
+  }
+}
+
+class MainNavigation extends StatefulWidget {
+  const MainNavigation({super.key});
+
+  @override
+  State<MainNavigation> createState() => _MainNavigationState();
+}
+
+class _MainNavigationState extends State<MainNavigation> {
+  int _selectedIndex = 0;
+
+  final List<Widget> _screens = [
+    const HomeScreen(),
+    const ControlsScreen(),
+    const LogScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _screens[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) => setState(() => _selectedIndex = index),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
+          BottomNavigationBarItem(icon: Icon(Icons.tune), label: 'Controls'),
+          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Logs'),
+        ],
+      ),
+    );
+  }
+}
+
+================================================================================
+FILE: lib/theme.dart
+================================================================================
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+class AppTheme {
+  static const Color background = Color(0xFF051425);
+  static const Color cardSurface = Color(0xFF122032);
+  static const Color cardBorder = Color(0xFF3E484F);
+  static const Color primaryAccent = Color(0xFF8ED5FF);
+  static const Color primaryContainer = Color(0xFF38BDF8); // Sky blue
+  static const Color onSurfaceText = Color(0xFFD5E3FC);
+  static const Color mutedText = Color(0xFFBDC8D1);
+  
+  static const Color errorBorder = Color(0xFF93000A);
+  static const Color errorText = Color(0xFFFFB4AB);
+  
+  static const Color successBg = Color(0xFF166534);
+  static const Color successText = Color(0xFF86EFAC);
+  
+  static const Color warningBg = Color(0xFF78350F);
+  static const Color warningText = Color(0xFFFCD34D);
+
+  static const Color bottomNavBorder = Color(0xFF334155);
+  static const Color navActive = Color(0xFF38BDF8);
+  static const Color navInactive = Color(0xFF475569);
+
+  static ThemeData get theme {
+    return ThemeData(
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: background,
+      primaryColor: primaryContainer,
+      colorScheme: const ColorScheme.dark(
+        primary: primaryContainer,
+        secondary: primaryAccent,
+        surface: cardSurface,
+        error: errorBorder,
+      ),
+      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
+        bodyLarge: const TextStyle(color: onSurfaceText),
+        bodyMedium: const TextStyle(color: onSurfaceText),
+        titleLarge: const TextStyle(color: onSurfaceText),
+        titleMedium: const TextStyle(color: onSurfaceText),
+        titleSmall: const TextStyle(color: mutedText),
+      ),
+      cardTheme: CardThemeData(
+        color: cardSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: cardBorder, width: 1),
+        ),
+        elevation: 0,
+        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: background,
+        selectedItemColor: navActive,
+        unselectedItemColor: navInactive,
+        showUnselectedLabels: true,
+        type: BottomNavigationBarType.fixed,
+        elevation: 0,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: background,
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: TextStyle(
+          color: onSurfaceText,
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+}
+
+================================================================================
+FILE: lib/services/firebase_service.dart
+================================================================================
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+class LogEntry {
+  final String message;
+  final DateTime timestamp;
+  final String colorType; // 'red', 'green', 'yellow', 'blue'
+
+  LogEntry({required this.message, required this.timestamp, required this.colorType});
+}
+
+class FirebaseService extends ChangeNotifier {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseDatabase _db = FirebaseDatabase.instance;
+  final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
+  
+  bool _isConnected = false;
+  bool get isConnected => _isConnected;
+
+  // Realtime Database Values
+  int _gas = 0;
+  bool _pir1 = false;
+  bool _pir2 = false;
+  bool _door = false;
+  bool _gasAlert = false;
+  bool _securityAlert = false;
+  bool _lockCommand = false;
+  String _lockStatus = "LOCKED";
+  int _light = 0;
+  int _motor = 0;
+  bool _lightStatus = false;
+  bool _motorStatus = false;
+  
+  // Getters
+  int get gas => _gas;
+  bool get pir1 => _pir1;
+  bool get pir2 => _pir2;
+  bool get door => _door;
+  bool get gasAlert => _gasAlert;
+  bool get securityAlert => _securityAlert;
+  bool get lockCommand => _lockCommand;
+  String get lockStatus => _lockStatus;
+  int get light => _light;
+  int get motor => _motor;
+  bool get lightStatus => _lightStatus;
+  bool get motorStatus => _motorStatus;
+  
+  // Historical data for charts
+  List<int> gasHistory = [];
+  
+  // Activity Log
+  List<LogEntry> activityLog = [];
+
+  // Auto-relock timer
+  Timer? _relockTimer;
+  int _relockCountdown = 0;
+  int get relockCountdown => _relockCountdown;
+
+  FirebaseService() {
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      _initNotifications();
+      await _auth.signInWithEmailAndPassword(
+          email: "test@test.com", password: "12345678");
+      
+      _db.databaseURL = "https://safenest-6ae41-default-rtdb.asia-southeast1.firebasedatabase.app/";
+      
+      _setupListeners();
+      _setupConnectionListener();
+    } catch (e) {
+      debugPrint("Firebase Init Error: $e");
+    }
+  }
+
+  void _initNotifications() async {
+    const AndroidInitializationSettings initializationSettingsAndroid = 
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings = 
+        InitializationSettings(android: initializationSettingsAndroid);
+    await _notificationsPlugin.initialize(settings: initializationSettings);
+  }
+
+  Future<void> _showNotification(String title, String body) async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics = 
+        AndroidNotificationDetails(
+          'safenest_alerts', 'SafeNest Alerts',
+          importance: Importance.max,
+          priority: Priority.high,
+          showWhen: true,
+        );
+    const NotificationDetails platformChannelSpecifics = 
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+    await _notificationsPlugin.show(
+      id: DateTime.now().millisecond, 
+      title: title, 
+      body: body, 
+      notificationDetails: platformChannelSpecifics,
+    );
+  }
+
+  void _setupConnectionListener() {
+    _db.ref(".info/connected").onValue.listen((event) {
+      final connected = event.snapshot.value as bool? ?? false;
+      _isConnected = connected;
+      notifyListeners();
+    });
+  }
+
+  void _addLog(String message, String colorType) {
+    activityLog.insert(0, LogEntry(
+      message: message,
+      timestamp: DateTime.now(),
+      colorType: colorType,
+    ));
+    if (activityLog.length > 50) {
+      activityLog.removeLast();
+    }
+    notifyListeners();
+  }
+
+  bool _toBool(dynamic value) {
+    if (value == null) return false;
+    if (value is bool) return value;
+    if (value is num) return value.toInt() == 1;
+    if (value is String) return value.toLowerCase() == "true" || value == "1";
+    return false;
+  }
+
+  void _setupListeners() {
+    final ref = _db.ref("SafeNest");
+    
+    ref.child("gas").onValue.listen((event) {
+      final val = (event.snapshot.value as num?)?.toInt() ?? 0;
+      if (val >= 2500 && _gas < 2500) {
+        _addLog("Gas crossed threshold: $val", "red");
+        _showNotification("⚠️ Gas Alert", "Dangerous gas levels detected: $val ppm");
+      }
+      _gas = val;
+      gasHistory.add(_gas);
+      if (gasHistory.length > 12) {
+        gasHistory.removeAt(0);
+      }
+      notifyListeners();
+    });
+
+    ref.child("pir1").onValue.listen((event) {
+      final val = _toBool(event.snapshot.value);
+      if (val && !_pir1) {
+        _showNotification("🏠 Motion Detected", "Movement sensed by PIR Sensor 1");
+      }
+      _pir1 = val;
+      notifyListeners();
+    });
+
+    ref.child("pir2").onValue.listen((event) {
+      final val = _toBool(event.snapshot.value);
+      if (val && !_pir2) {
+        _showNotification("🏠 Motion Detected", "Movement sensed by PIR Sensor 2");
+      }
+      _pir2 = val;
+      notifyListeners();
+    });
+
+    ref.child("door").onValue.listen((event) {
+      _door = _toBool(event.snapshot.value);
+      notifyListeners();
+    });
+    
+    ref.child("gasAlert").onValue.listen((event) {
+      final val = _toBool(event.snapshot.value);
+      if (val && !_gasAlert) {
+        _showNotification("⚠️ Gas Critical", "Gas alert active!");
+      }
+      _gasAlert = val;
+      notifyListeners();
+    });
+
+    ref.child("securityAlert").onValue.listen((event) {
+      final val = _toBool(event.snapshot.value);
+      if (val && !_securityAlert) {
+        _showNotification("🛡️ Security Alert", "Security breach detected!");
+      }
+      _securityAlert = val;
+      notifyListeners();
+    });
+    
+    ref.child("lockCommand").onValue.listen((event) {
+      final val = _toBool(event.snapshot.value);
+      if (_lockCommand != val) {
+        _lockCommand = val;
+        _addLog("Lock state changed to: ${val ? 'UNLOCKED' : 'LOCKED'}", val ? "yellow" : "green");
+        
+        if (_lockCommand) {
+          _startRelockTimer();
+        } else {
+          _cancelRelockTimer();
+        }
+        notifyListeners();
+      }
+    });
+
+    ref.child("lockStatus").onValue.listen((event) {
+      _lockStatus = event.snapshot.value as String? ?? "LOCKED";
+      notifyListeners();
+    });
+
+    ref.child("light").onValue.listen((event) {
+      _light = (event.snapshot.value as num?)?.toInt() ?? 0;
+      notifyListeners();
+    });
+
+    ref.child("motor").onValue.listen((event) {
+      _motor = (event.snapshot.value as num?)?.toInt() ?? 0;
+      notifyListeners();
+    });
+    
+    ref.child("lightStatus").onValue.listen((event) {
+       final val = _toBool(event.snapshot.value);
+       if (_lightStatus != val) {
+         _lightStatus = val;
+         _addLog("Light toggled ${_lightStatus ? 'ON' : 'OFF'}", "blue");
+         notifyListeners();
+       }
+    });
+    
+    ref.child("motorStatus").onValue.listen((event) {
+       final val = _toBool(event.snapshot.value);
+       if (_motorStatus != val) {
+         _motorStatus = val;
+         _addLog("DC Motor toggled ${_motorStatus ? 'ON' : 'OFF'}", "blue");
+         notifyListeners();
+       }
+    });
+  }
+
+  void _startRelockTimer() {
+    _cancelRelockTimer();
+    _relockCountdown = 20;
+    notifyListeners();
+    
+    _relockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_relockCountdown > 0) {
+        _relockCountdown--;
+        notifyListeners();
+      } else {
+        _cancelRelockTimer();
+        setLock(false); // Auto-relock
+        _addLog("Auto-relocked after 20s", "yellow");
+      }
+    });
+  }
+
+  void _cancelRelockTimer() {
+    _relockTimer?.cancel();
+    _relockTimer = null;
+    _relockCountdown = 0;
+  }
+
+  // Write Methods
+  Future<void> setLock(bool unlock) async {
+    _lockCommand = unlock;
+    notifyListeners();
+    await _db.ref("SafeNest/lockCommand").set(unlock);
+  }
+
+  Future<void> setLight(int val) async {
+    _lightStatus = val == 1;
+    notifyListeners();
+    await _db.ref("SafeNest/light").set(val);
+  }
+
+  Future<void> setMotor(int val) async {
+    _motorStatus = val == 1;
+    notifyListeners();
+    await _db.ref("SafeNest/motor").set(val);
+  }
+}
+
+================================================================================
+FILE: lib/screens/home_screen.dart
+================================================================================
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:fl_chart/fl_chart.dart';
+import '../services/firebase_service.dart';
+import '../theme.dart';
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final service = context.watch<FirebaseService>();
+
+    final isForcedEntry = service.door && !service.lockCommand;
+    final isGasAlert = service.gasAlert || service.gas >= 2500;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('SafeNest'),
+        actions: [
+          Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: service.isConnected ? AppTheme.successText : AppTheme.errorText,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                service.isConnected ? 'Connected' : 'Disconnected',
+                style: TextStyle(
+                  color: service.isConnected ? AppTheme.successText : AppTheme.errorText,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(width: 16),
+            ],
+          )
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: [
+          if (isGasAlert)
+            _buildAlertBanner(
+              '⚠️ Gas Critical — Dangerous levels detected!',
+            ),
+          if (isForcedEntry)
+            _buildAlertBanner(
+              '⚠️ Forced Entry Detected — Door opened without unlock!',
+            ),
+          _buildGasCard(context, service, isGasAlert),
+          _buildMotionCard(context, service),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAlertBanner(String text) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      color: AppTheme.errorBorder,
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppTheme.errorText,
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildGasCard(BuildContext context, FirebaseService service, bool isAlert) {
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isAlert ? AppTheme.errorBorder : AppTheme.cardBorder,
+          width: isAlert ? 2 : 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Gas & Fire Safety',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'MQ-2 Sensor',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isAlert ? AppTheme.errorBorder : AppTheme.successBg,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    isAlert ? 'ALERT' : 'OK',
+                    style: TextStyle(
+                      color: isAlert ? AppTheme.errorText : AppTheme.successText,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  '${service.gas}',
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.onSurfaceText,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'ppm',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              height: 120,
+              child: LineChart(
+                LineChartData(
+                  gridData: const FlGridData(show: false),
+                  titlesData: const FlTitlesData(show: false),
+                  borderData: FlBorderData(show: false),
+                  minY: 0,
+                  maxY: 4095,
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: service.gasHistory
+                          .asMap()
+                          .entries
+                          .map((e) => FlSpot(e.key.toDouble(), e.value.toDouble()))
+                          .toList(),
+                      isCurved: true,
+                      color: AppTheme.primaryContainer,
+                      barWidth: 3,
+                      isStrokeCapRound: true,
+                      dotData: const FlDotData(show: false),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: AppTheme.primaryContainer.withValues(alpha: 0.2),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMotionCard(BuildContext context, FirebaseService service) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Motion Detection',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            _buildMotionRow('PIR Sensor 1', service.pir1),
+            const Divider(color: AppTheme.cardBorder, height: 24),
+            _buildMotionRow('PIR Sensor 2', service.pir2),
+            const SizedBox(height: 16),
+            Text(
+              'Lights auto-on on detection • off after 15s',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMotionRow(String label, bool isDetected) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 16)),
+        Row(
+          children: [
+            Text(
+              isDetected ? 'DETECTED' : 'NONE',
+              style: TextStyle(
+                color: isDetected ? AppTheme.successText : AppTheme.mutedText,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isDetected ? AppTheme.successText : AppTheme.mutedText,
+                boxShadow: isDetected
+                    ? [BoxShadow(color: AppTheme.successText.withValues(alpha: 0.5), blurRadius: 8, spreadRadius: 2)]
+                    : null,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+================================================================================
+FILE: lib/screens/controls_screen.dart
+================================================================================
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/firebase_service.dart';
+import '../theme.dart';
+
+class ControlsScreen extends StatelessWidget {
+  const ControlsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final service = context.watch<FirebaseService>();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Controls'),
+        centerTitle: true,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: [
+          _buildLockCard(context, service),
+          _buildDeviceCard(context, service),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLockCard(BuildContext context, FirebaseService service) {
+    final isUnlocked = service.lockCommand;
+    final progress = service.relockCountdown / 20.0;
+
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(
+          color: AppTheme.cardBorder,
+          width: 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            Icon(
+              isUnlocked ? Icons.lock_open : Icons.lock,
+              size: 80,
+              color: isUnlocked ? AppTheme.errorText : AppTheme.successText,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isUnlocked ? 'UNLOCKED' : 'LOCKED',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isUnlocked ? 'Auto-relocking in ${service.relockCountdown}s' : 'Door is secured — default state',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            if (isUnlocked) ...[
+              const SizedBox(height: 16),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 8,
+                  backgroundColor: AppTheme.background,
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.warningText),
+                ),
+              ),
+            ],
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => service.setLock(false),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.successBg,
+                      foregroundColor: AppTheme.successText,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Lock Door', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => service.setLock(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.errorBorder,
+                      foregroundColor: AppTheme.errorText,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Unlock Door', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeviceCard(BuildContext context, FirebaseService service) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Device Controls',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            _buildDeviceRow(
+              context: context,
+              icon: Icons.lightbulb_outline,
+              title: 'Lights',
+              subtitle: 'Relay 1 — motion activated',
+              value: service.lightStatus,
+              onChanged: (val) => service.setLight(val ? 1 : 0),
+            ),
+            const Divider(color: AppTheme.cardBorder, height: 24),
+            _buildDeviceRow(
+              context: context,
+              icon: Icons.cyclone,
+              title: 'DC Motor',
+              subtitle: 'Relay 2 — manual control',
+              value: service.motorStatus,
+              onChanged: (val) => service.setMotor(val ? 1 : 0),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeviceRow({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: value ? AppTheme.primaryContainer.withValues(alpha: 0.2) : AppTheme.background,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            icon,
+            color: value ? AppTheme.primaryContainer : AppTheme.mutedText,
+            size: 28,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text(subtitle, style: Theme.of(context).textTheme.titleSmall),
+            ],
+          ),
+        ),
+        Switch(
+          value: value,
+          onChanged: onChanged,
+          activeThumbColor: AppTheme.primaryContainer,
+          activeTrackColor: AppTheme.primaryContainer.withValues(alpha: 0.3),
+          inactiveThumbColor: AppTheme.mutedText,
+          inactiveTrackColor: AppTheme.background,
+        ),
+      ],
+    );
+  }
+}
+
+================================================================================
+FILE: lib/screens/log_screen.dart
+================================================================================
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import '../services/firebase_service.dart';
+import '../theme.dart';
+
+class LogScreen extends StatelessWidget {
+  const LogScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final service = context.watch<FirebaseService>();
+    final timeFormat = DateFormat('HH:mm:ss');
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Activity Log'),
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Row(
+              children: [
+                Expanded(child: _buildStatusCard(context, 'Gas Alert', service.gasAlert)),
+                const SizedBox(width: 16),
+                Expanded(child: _buildStatusCard(context, 'Security Alert', service.securityAlert)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Card(
+              margin: const EdgeInsets.all(16.0),
+              child: service.activityLog.isEmpty
+                  ? const Center(child: Text('No recent activity'))
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(16.0),
+                      itemCount: service.activityLog.length,
+                      separatorBuilder: (context, idx) => const Divider(color: AppTheme.cardBorder),
+                      itemBuilder: (context, index) {
+                        final log = service.activityLog[index];
+                        return _buildLogEntry(log, timeFormat);
+                      },
+                    ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: Text(
+              'Last updated: ${timeFormat.format(DateTime.now())}',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusCard(BuildContext context, String title, bool isAlert) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.cardBorder),
+      ),
+      child: Column(
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: isAlert ? AppTheme.errorBorder : AppTheme.successBg,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              isAlert ? 'YES' : 'NO',
+              style: TextStyle(
+                color: isAlert ? AppTheme.errorText : AppTheme.successText,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogEntry(LogEntry log, DateFormat timeFormat) {
+    Color dotColor;
+    switch (log.colorType) {
+      case 'red':
+        dotColor = AppTheme.errorText;
+        break;
+      case 'green':
+        dotColor = AppTheme.successText;
+        break;
+      case 'yellow':
+        dotColor = AppTheme.warningText;
+        break;
+      case 'blue':
+        dotColor = AppTheme.primaryContainer;
+        break;
+      default:
+        dotColor = AppTheme.mutedText;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: dotColor,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            timeFormat.format(log.timestamp),
+            style: const TextStyle(
+              color: AppTheme.mutedText,
+              fontFamily: 'monospace',
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              log.message,
+              style: const TextStyle(color: AppTheme.onSurfaceText),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+================================================================================
+FILE: android/app/build.gradle.kts
+================================================================================
+plugins {
+    id("com.android.application")
+    id("kotlin-android")
+    id("dev.flutter.flutter-gradle-plugin")
+}
+
+android {
+    namespace = "com.example.safenest_app"
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
+
+    compileOptions {
+        isCoreLibraryDesugaringEnabled = true
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
+
+    defaultConfig {
+        applicationId = "com.example.safenest_app"
+        minSdk = 21
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+}
+
+flutter {
+    source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+}
+
+================================================================================
+FILE: android/app/src/main/AndroidManifest.xml
+================================================================================
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <application
+        android:label="safenest_app"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
+</manifest>
