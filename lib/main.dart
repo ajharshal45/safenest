@@ -2,24 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 
+import 'config/secrets.dart';
 import 'theme.dart';
 import 'services/firebase_service.dart';
+import 'providers/theme_provider.dart';
 import 'screens/main_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
-    // Attempting to initialize Firebase.
-    // If you are running on Web or iOS, you may need to pass FirebaseOptions explicitly here,
-    // or ensure google-services.json / GoogleService-Info.plist is present.
     await Firebase.initializeApp(
       options: const FirebaseOptions(
-        apiKey: "AIzaSyDQmyJHTeWHtorit6UJ1tT_EL1tqUtpyLk",
-        appId: "1:245100657388:android:5591c28c89423984", // Generic looking ID
-        messagingSenderId: "245100657388",
-        projectId: "safenest-6ae41",
-        databaseURL: "https://safenest-6ae41-default-rtdb.asia-southeast1.firebasedatabase.app/",
+        apiKey: Secrets.firebaseApiKey,
+        appId: Secrets.firebaseAppId,
+        messagingSenderId: Secrets.firebaseMessagingSenderId,
+        projectId: Secrets.firebaseProjectId,
+        databaseURL: Secrets.firebaseDatabaseUrl,
       ),
     );
   } catch (e) {
@@ -27,26 +26,30 @@ void main() async {
     // Depending on platform, it might continue or fail here.
   }
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => FirebaseService()),
-      ],
-      child: const SafeNestApp(),
-    ),
-  );
-}
-
-class SafeNestApp extends StatelessWidget {
-  const SafeNestApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'SafeNest',
-      theme: AppTheme.theme,
-      debugShowCheckedModeBanner: false,
-      home: const MainScreen(),
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => FirebaseService()),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ],
+        child: const SafeNestApp(),
+      ),
     );
   }
-}
+  
+  class SafeNestApp extends StatelessWidget {
+    const SafeNestApp({super.key});
+  
+    @override
+    Widget build(BuildContext context) {
+      final themeProvider = context.watch<ThemeProvider>();
+      return MaterialApp(
+        title: 'SafeNest',
+        themeMode: themeProvider.themeMode,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        debugShowCheckedModeBanner: false,
+        home: const MainScreen(),
+      );
+    }
+  }

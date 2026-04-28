@@ -2,71 +2,90 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static const Color background = Color(0xFF051425);
-  static const Color cardSurface = Color(0xFF122032);
-  static const Color cardBorder = Color(0xFF3E484F);
-  static const Color primaryAccent = Color(0xFF8ED5FF);
-  static const Color primaryContainer = Color(0xFF38BDF8); // Sky blue
-  static const Color onSurfaceText = Color(0xFFD5E3FC);
-  static const Color mutedText = Color(0xFFBDC8D1);
-  
-  static const Color errorBorder = Color(0xFF93000A);
-  static const Color errorText = Color(0xFFFFB4AB);
-  
-  static const Color successBg = Color(0xFF166534);
-  static const Color successText = Color(0xFF86EFAC);
-  
-  static const Color warningBg = Color(0xFF78350F);
-  static const Color warningText = Color(0xFFFCD34D);
+  // Global Accents
+  static const Color primaryCyan = Color(0xFF00E5FF);
+  static const Color primaryBlue = Color(0xFF007AFF);
+  static const Color successGreenDark = Color(0xFF39FF14);
+  static const Color successGreenLight = Color(0xFF34C759);
+  static const Color errorRed = Color(0xFFFF3B30);
+  static const Color warningAmber = Color(0xFFFF9500);
 
-  static const Color bottomNavBorder = Color(0xFF334155);
-  static const Color navActive = Color(0xFF38BDF8);
-  static const Color navInactive = Color(0xFF475569);
+  // Dark Theme Colors
+  static const Color darkBackground = Color(0xFF051425);
+  static const Color darkSurface = Color(0x0DFFFFFF); // 5% White
+  static const Color darkBorder = Color(0x1AFFFFFF); // 10% White
+  static const Color darkText = Color(0xFFF8FAFC);
+  static const Color darkMuted = Color(0xFF94A3B8);
 
-  static ThemeData get theme {
+  // Light Theme Colors
+  static const Color lightBackground = Color(0xFFF8FAFC);
+  static const Color lightSurface = Color(0x99FFFFFF); // 60% White
+  static const Color lightBorder = Color(0x33000000); // 20% Black
+  static const Color lightText = Color(0xFF0F172A);
+  static const Color lightMuted = Color(0xFF64748B);
+
+  static ThemeData get darkTheme {
     return ThemeData(
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: background,
-      primaryColor: primaryContainer,
+      scaffoldBackgroundColor: Colors.transparent, // For background gradients
+      primaryColor: primaryCyan,
       colorScheme: const ColorScheme.dark(
-        primary: primaryContainer,
-        secondary: primaryAccent,
-        surface: cardSurface,
-        error: errorBorder,
+        primary: primaryCyan,
+        secondary: primaryCyan,
+        surface: darkBackground,
+        error: errorRed,
       ),
       textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
-        bodyLarge: const TextStyle(color: onSurfaceText),
-        bodyMedium: const TextStyle(color: onSurfaceText),
-        titleLarge: const TextStyle(color: onSurfaceText),
-        titleMedium: const TextStyle(color: onSurfaceText),
-        titleSmall: const TextStyle(color: mutedText),
-      ),
-      cardTheme: CardThemeData(
-        color: cardSurface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: cardBorder, width: 1),
-        ),
-        elevation: 0,
-        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: background,
-        selectedItemColor: navActive,
-        unselectedItemColor: navInactive,
-        showUnselectedLabels: true,
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
+        bodyLarge: const TextStyle(color: darkText, letterSpacing: 0.2),
+        bodyMedium: const TextStyle(color: darkText, letterSpacing: 0.2),
+        titleLarge: const TextStyle(color: darkText, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+        titleMedium: const TextStyle(color: darkText, fontWeight: FontWeight.w600, letterSpacing: 0.3),
+        titleSmall: const TextStyle(color: darkMuted, fontWeight: FontWeight.w500),
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: background,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        centerTitle: false,
+        centerTitle: true,
         titleTextStyle: TextStyle(
-          color: onSurfaceText,
-          fontSize: 24,
+          color: darkText,
+          fontSize: 20,
           fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
         ),
+        iconTheme: IconThemeData(color: darkText),
+      ),
+    );
+  }
+
+  static ThemeData get lightTheme {
+    return ThemeData(
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: Colors.transparent, // For background gradients
+      primaryColor: primaryBlue,
+      colorScheme: const ColorScheme.light(
+        primary: primaryBlue,
+        secondary: primaryBlue,
+        surface: lightBackground,
+        error: errorRed,
+      ),
+      textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme).copyWith(
+        bodyLarge: const TextStyle(color: lightText, letterSpacing: 0.2),
+        bodyMedium: const TextStyle(color: lightText, letterSpacing: 0.2),
+        titleLarge: const TextStyle(color: lightText, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+        titleMedium: const TextStyle(color: lightText, fontWeight: FontWeight.w600, letterSpacing: 0.3),
+        titleSmall: const TextStyle(color: lightMuted, fontWeight: FontWeight.w500),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        titleTextStyle: TextStyle(
+          color: lightText,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
+        ),
+        iconTheme: IconThemeData(color: lightText),
       ),
     );
   }

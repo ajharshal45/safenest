@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '../config/secrets.dart';
 
 class LogEntry {
   final String message;
@@ -68,9 +69,9 @@ class FirebaseService extends ChangeNotifier {
     try {
       _initNotifications();
       await _auth.signInWithEmailAndPassword(
-          email: "test@test.com", password: "12345678");
+          email: Secrets.testEmail, password: Secrets.testPassword);
       
-      _db.databaseURL = "https://safenest-6ae41-default-rtdb.asia-southeast1.firebasedatabase.app/";
+      _db.databaseURL = Secrets.firebaseDatabaseUrl;
       
       _setupListeners();
       _setupConnectionListener();
